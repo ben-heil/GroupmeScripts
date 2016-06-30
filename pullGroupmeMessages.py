@@ -5,6 +5,29 @@ import json
 import requests
 import argparse
 
+class PostCounter:
+        def __init__(self):
+            #Note, you need the idToAuthor dictionary because users can change
+            #their names
+            self.idToAuthor = dict()
+            self.postCount = dict()
+            
+        def countPost(self, post):
+            authorId = post["user_id"]
+            if authorId in self.idToAuthor:
+                self.postCount[authorId] = self.postCount[authorId] + 1
+            else:
+                self.idToAuthor[authorId] = post["name"]
+                self.postCount[authorId] = 1
+    
+        #TODO: change this to a accessor function of some sort
+        def printPostCounts(self):
+            for key in self.postCount:
+                print(self.idToAuthor[key].encode('utf-8'), "\t", 
+                      str(self.postCount[key]).encode('utf-8'))
+        
+        
+
 def chooseGroup(groups):
     print("Here are the groups you are in:")
     print("ID" + "\t\t" + "Group Name")
@@ -51,14 +74,15 @@ def main():
     
     jsonDict = groupResponse.json()
     
-    firstMessage = args.messageID
+    currentMessage = args.messageID
     chosenGroup = args.groupID
+    token = args.token
     
     if chosenGroup == None:
         chosenGroup = chooseGroup(jsonDict["response"])
 
-    if firstMessage == None:
-        firstMessage = getLatestMessage(chosenGroup, args.token)
+    if currentMessage == None:
+        currentMessage = getLatestMessage(chosenGroup, args.token)
     print(chosenGroup)
     
     
@@ -66,11 +90,30 @@ def main():
     
     status = "200"
     
-    while(status == "200"):
-        pass
     
-    #Have to encode the string before writing 
-    outFile.write(str(groupResponse.text.encode('utf-8')))
+    count = PostCounter()
+    
+    while status == "200":
+        messageResponse = requests.get("https://api.groupme.com/v3/groups/" +
+                                       chosenGroup + "/messages?token=" + token +
+                                       "&limit=100&before_id="+currentMessage)
+        messageResponse = messageResponse.json()
+        status = messageResponse["meta"]["code"]
+        print(status)
+        messages = messageResponse["response"]["messages"]
+        for message in messages:
+            count.countPost(message)
+            id = str(message["user_id"] + "\n")
+            outFile.write(id.encode('utf-8'))
+            name = str(message["name"] + "\n")
+            outFile.write(name.encode(encoding='utf_8', errors='ignore'))
+            text = str(message["text"] + "\n")
+            outFile.write(text.encode(encoding='utf-8', errors='ignore'))
+            for favorite in message["favorited_by"]:
+                outFile.write(favorite.encode('utf-8') + ", ")
+            outFile.write("\n")
+            
+    count.printPostCounts()    
     
     #print("Input the ID of the group which you would like to download messages from)
     #
