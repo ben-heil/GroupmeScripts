@@ -5,10 +5,9 @@ import json
 import requests
 import argparse
 
+#TODO: This belongs in a different script
 class PostCounter:
         def __init__(self):
-            #Note, you need the idToAuthor dictionary because users can change
-            #their names
             self.idToAuthor = dict()
             self.postCount = dict()
             
@@ -20,13 +19,14 @@ class PostCounter:
                 self.idToAuthor[authorId] = post["name"]
                 self.postCount[authorId] = 1
     
-        #TODO: change this to a accessor function of some sort
         def printPostCounts(self):
             for key in self.postCount:
                 print(self.idToAuthor[key].encode(encoding ='ascii', errors = 'ignore'), "\t", 
                       str(self.postCount[key]).encode(encoding ='ascii', errors = 'ignore'))
         
-        
+
+def asciiWrite(outFile, message):
+    outFile.write(message.encode(encoding ='ascii', errors = 'ignore'))
 
 def chooseGroup(groups):
     print("Here are the groups you are in:")
@@ -49,6 +49,31 @@ def getLatestMessage(groupId, token):
     
     return group["messages"]["last_message_id"]
 
+def recordMessages(rawResponse, currentMessage, outFile):
+        messageResponse = rawResponse.json()
+        
+        messages = messageResponse["response"]["messages"]
+        for message in messages:
+            currentMessage = message["id"]
+
+            id = str(message["user_id"] + "\r\n")
+            asciiWrite(outFile, id)
+            
+            name = str(message["name"] + "\r\n")
+            asciiWrite(outFile, name)
+            
+            if message["text"] is None:
+                asciiWrite(outFile, "\r\n")
+            else:
+                text = str(message["text"] + "\r\n")
+                asciiWrite(outFile, text)
+            for favorite in message["favorited_by"]:
+                favorite = favorite + ", "
+                asciiWrite(outFile, favorite)
+            asciiWrite(outFile, "\r\n")
+            
+        return currentMessage
+
 def main():
     #Use argparse to take in the user's API token from command line
     parser = argparse.ArgumentParser(description="add flavor text here")
@@ -63,12 +88,10 @@ def main():
     
     baseURL = "https://api.groupme.com/v3"
     
-    #Retrieve and parse the response
-    #TODO use request's params option
     groupResponse = requests.get(baseURL + "/groups?per_page=10&token=" + args.token)
     
     try:
-        outFile = open(args.outFile, 'wb')
+        outFile = open(args.outFile, 'ab')
     except IOError:
         print("The file didn't open")
         exit(1)
@@ -84,51 +107,31 @@ def main():
 
     if currentMessage == None:
         currentMessage = getLatestMessage(chosenGroup, args.token)
-    print(chosenGroup)
-    
-    
-    #TODO: get first message
-    
-    status = "200"
-    
     
     count = PostCounter()
     
-    while status == "200":
-        messageResponse = requests.get("https://api.groupme.com/v3/groups/" +
-                                       chosenGroup + "/messages?token=" + token +
-                                       "&limit=100&before_id="+currentMessage)
-        messageResponse = messageResponse.json()
-        
-        status = messageResponse["meta"]["code"]
-        print(status)
-        messages = messageResponse["response"]["messages"]
-        for message in messages:
-            count.countPost(message)
-            id = str(message["user_id"] + "\r\n")
-            outFile.write(id.encode(encoding ='ascii', errors = 'ignore'))
-            name = str(message["name"] + "\r\n")
-            outFile.write(name.encode(encoding='ascii', errors='ignore'))
-            if message["text"] is None:
-                outFile.write("\r\n".encode(encoding = 'ascii', errors = 'ignore'))
-            else:
-                text = str(message["text"] + "\r\n")
-                outFile.write(text.encode(encoding='ascii', errors='ignore'))
-            for favorite in message["favorited_by"]:
-                favorite = favorite + ", "
-                outFile.write(favorite.encode('ascii'))
-            outFile.write("\r\n".encode(encoding = 'ascii', errors = 'ignore'))
-            
-    count.printPostCounts()    
+    #Used for a DIY do-while loop
+    responseIsGood = True
+  
+    while responseIsGood:
+        rawResponse = requests.get("https://api.groupme.com/v3/groups/" +
+                                           chosenGroup + "/messages?token=" + token +
+                                           "&limit=100&before_id="+currentMessage)
     
-    #print("Input the ID of the group which you would like to download messages from)
-    #
-    #groupID = str(sys.stdin.read())
-    #
-    #urlExtension = "/groups/" + groupId + "/messages?" + args.token
-    #
-    #print(baseURL + urlExtension)
-    #
+        responseIsGood = rawResponse.status_code == 200
+        print(responseIsGood)
+        
+        if responseIsGood:         
+            currentMessage = recordMessages(rawResponse, currentMessage, outFile)
+        else:
+            if rawResponse.status_code == 304:
+                print("All messages downloaded")
+            elif rawResponse.status_code == 420:
+                print("Rate limit exceeded, try again later, specifying " +
+                      "messageID " + currentMessage "\n and groupID " 
+                      + chosenGroup + " as parameters")
+            else: 
+                print("Error: " + str(rawResponse.status_code))     
 
 if __name__ == "__main__":
    exit (main())
