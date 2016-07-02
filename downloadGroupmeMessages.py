@@ -28,15 +28,19 @@ class PostCounter:
 def asciiWrite(outFile, message):
     outFile.write(message.encode(encoding ='ascii', errors = 'ignore'))
 
+def asciiPrint(message):
+    print(message.encode(encoding ='ascii', errors = 'ignore'))
+
 def chooseGroup(groups):
     print("Here are the groups you are in:")
-    print("ID" + "\t\t" + "Group Name")
+    print("ID" + "    " + "Group Name")
    
     for i in range(0, len(groups)):
-        print((str(i) + "\t" + groups[i]["name"]))
+        groupLabel = str(i) + "    " + groups[i]["name"]
+        asciiPrint(groupLabel)
         #TODO: learn how to encode to make things not break
     print()
-    print("Type the ID of the group you'd like to download messages from")
+    print("Type the number of the group you'd like to download messages from")
     choice = int(input().strip())
     return groups[choice]["group_id"]
 
@@ -88,7 +92,7 @@ def main():
     
     baseURL = "https://api.groupme.com/v3"
     
-    groupResponse = requests.get(baseURL + "/groups?per_page=10&token=" + args.token)
+    groupResponse = requests.get(baseURL + "/groups?per_page=100&token=" + args.token)
     
     try:
         outFile = open(args.outFile, 'ab')
@@ -128,7 +132,7 @@ def main():
                 print("All messages downloaded")
             elif rawResponse.status_code == 420:
                 print("Rate limit exceeded, try again later, specifying " +
-                      "messageID " + currentMessage "\n and groupID " 
+                      "messageID " + currentMessage + "\n and groupID " 
                       + chosenGroup + " as parameters")
             else: 
                 print("Error: " + str(rawResponse.status_code))     
