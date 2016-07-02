@@ -23,8 +23,8 @@ class PostCounter:
         #TODO: change this to a accessor function of some sort
         def printPostCounts(self):
             for key in self.postCount:
-                print(self.idToAuthor[key].encode('utf-8'), "\t", 
-                      str(self.postCount[key]).encode('utf-8'))
+                print(self.idToAuthor[key].encode(encoding ='ascii', errors = 'ignore'), "\t", 
+                      str(self.postCount[key]).encode(encoding ='ascii', errors = 'ignore'))
         
         
 
@@ -64,10 +64,11 @@ def main():
     baseURL = "https://api.groupme.com/v3"
     
     #Retrieve and parse the response
+    #TODO use request's params option
     groupResponse = requests.get(baseURL + "/groups?per_page=10&token=" + args.token)
     
     try:
-        outFile = open(args.outFile, 'w')
+        outFile = open(args.outFile, 'wb')
     except IOError:
         print("The file didn't open")
         exit(1)
@@ -98,20 +99,25 @@ def main():
                                        chosenGroup + "/messages?token=" + token +
                                        "&limit=100&before_id="+currentMessage)
         messageResponse = messageResponse.json()
+        
         status = messageResponse["meta"]["code"]
         print(status)
         messages = messageResponse["response"]["messages"]
         for message in messages:
             count.countPost(message)
-            id = str(message["user_id"] + "\n")
-            outFile.write(id.encode('utf-8'))
-            name = str(message["name"] + "\n")
-            outFile.write(name.encode(encoding='utf_8', errors='ignore'))
-            text = str(message["text"] + "\n")
-            outFile.write(text.encode(encoding='utf-8', errors='ignore'))
+            id = str(message["user_id"] + "\r\n")
+            outFile.write(id.encode(encoding ='ascii', errors = 'ignore'))
+            name = str(message["name"] + "\r\n")
+            outFile.write(name.encode(encoding='ascii', errors='ignore'))
+            if message["text"] is None:
+                outFile.write("\r\n".encode(encoding = 'ascii', errors = 'ignore'))
+            else:
+                text = str(message["text"] + "\r\n")
+                outFile.write(text.encode(encoding='ascii', errors='ignore'))
             for favorite in message["favorited_by"]:
-                outFile.write(favorite.encode('utf-8') + ", ")
-            outFile.write("\n")
+                favorite = favorite + ", "
+                outFile.write(favorite.encode('ascii'))
+            outFile.write("\r\n".encode(encoding = 'ascii', errors = 'ignore'))
             
     count.printPostCounts()    
     
