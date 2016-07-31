@@ -5,25 +5,6 @@ import json
 import requests
 import argparse
 
-#TODO: Incorporate an on the fly count option
-class PostCounter:
-        def __init__(self):
-            self.idToAuthor = dict()
-            self.postCount = dict()
-            
-        def countPost(self, post):
-            authorId = post["user_id"]
-            if authorId in self.idToAuthor:
-                self.postCount[authorId] = self.postCount[authorId] + 1
-            else:
-                self.idToAuthor[authorId] = post["name"]
-                self.postCount[authorId] = 1
-    
-        def printPostCounts(self):
-            for key in self.postCount:
-                print(self.idToAuthor[key].encode(encoding ='ascii', errors = 'ignore'), "\t", 
-                      str(self.postCount[key]).encode(encoding ='ascii', errors = 'ignore'))
-        
 
 def asciiWrite(outFile, message):
     outFile.write(message.encode(encoding ='ascii', errors = 'ignore'))
@@ -52,8 +33,6 @@ def getLatestMessage(groupId, token):
                           "?token=" + token)
     rawJson = response.json()
     group = rawJson["response"]
-    #TODO consider making this a one liner
-    
     return group["messages"]["last_message_id"]
 
 def recordMessages(rawResponse, currentMessage, outFile):
