@@ -5,7 +5,7 @@ import json
 import requests
 import argparse
 
-#TODO: This belongs in a different script
+#TODO: Incorporate an on the fly count option
 class PostCounter:
         def __init__(self):
             self.idToAuthor = dict()
@@ -28,17 +28,20 @@ class PostCounter:
 def asciiWrite(outFile, message):
     outFile.write(message.encode(encoding ='ascii', errors = 'ignore'))
 
+#This function strips emojii and other characters that can't be written to a txt file
 def asciiPrint(message):
-    print(message.encode(encoding ='ascii', errors = 'ignore'))
+    sys.stdout.write(str((message.encode(encoding ='ascii', errors = 'ignore'))))
 
 def chooseGroup(groups):
     print("Here are the groups you are in:")
     print("ID" + "    " + "Group Name")
    
-    for i in range(0, len(groups)):
+    i = 0
+    for group in groups:
         groupLabel = str(i) + "    " + groups[i]["name"]
         asciiPrint(groupLabel)
-        #TODO: learn how to encode to make things not break
+        print()
+        i += 1
     print()
     print("Type the number of the group you'd like to download messages from")
     choice = int(input().strip())
@@ -60,20 +63,28 @@ def recordMessages(rawResponse, currentMessage, outFile):
         for message in messages:
             currentMessage = message["id"]
 
-            id = str(message["user_id"] + "\r\n")
+            id = str(message["user_id"] + "\t")
             asciiWrite(outFile, id)
             
-            name = str(message["name"] + "\r\n")
+            name = str(message["name"] + "\t")
             asciiWrite(outFile, name)
             
+            time = str(message["created_at"]) + "\t"
+            asciiWrite(outFile, time)
+            
             if message["text"] is None:
-                asciiWrite(outFile, "\r\n")
+                asciiWrite(outFile, "Picture\t")
             else:
-                text = str(message["text"] + "\r\n")
-                asciiWrite(outFile, text)
+                text = str(message["text"] + "\t")
+                asciiWrite(outFile, text.replace("\n", " - "))
+            if not message["favorited_by"]:
+                asciiWrite(outFile, "No favorites")
             for favorite in message["favorited_by"]:
-                favorite = favorite + ", "
+                favorite = favorite + ";"
                 asciiWrite(outFile, favorite)
+            asciiWrite(outFile,"\t")
+            favoriteCount = str(len(message["favorited_by"])) + "\t"
+            asciiWrite(outFile, favoriteCount)
             asciiWrite(outFile, "\r\n")
             
         return currentMessage
@@ -108,11 +119,12 @@ def main():
     
     if chosenGroup == None:
         chosenGroup = chooseGroup(jsonDict["response"])
+        asciiWrite(outFile, "UserID\tName\tTime\tMessage\tFavorites\tFavoriteCount\t\r\n")
 
     if currentMessage == None:
         currentMessage = getLatestMessage(chosenGroup, args.token)
     
-    count = PostCounter()
+    counter = PostCounter()
     
     #Used for a DIY do-while loop
     responseIsGood = True
