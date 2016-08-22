@@ -103,20 +103,20 @@ def main():
     if currentMessage == None:
         currentMessage = getLatestMessage(chosenGroup, args.token)
     
-    counter = PostCounter()
-    
     #Used for a DIY do-while loop
     responseIsGood = True
-  
+    
+    messagesRead = 0
     while responseIsGood:
         rawResponse = requests.get("https://api.groupme.com/v3/groups/" +
                                            chosenGroup + "/messages?token=" + token +
                                            "&limit=100&before_id="+currentMessage)
     
         responseIsGood = rawResponse.status_code == 200
-        print(responseIsGood)
         
         if responseIsGood:         
+            messagesRead += 100
+            print(str(messagesRead) + " messages recorded")
             currentMessage = recordMessages(rawResponse, currentMessage, outFile)
         else:
             if rawResponse.status_code == 304:
